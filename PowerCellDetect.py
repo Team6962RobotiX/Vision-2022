@@ -1,7 +1,8 @@
 import numpy as np
 import cv2
 import math
-
+import gc
+cv2.useOptimized()
 ################### WEIRD RASPBERRY PI STUFF ###################
 
 from videocaptureasync import VideoCaptureAsync as vc
@@ -38,20 +39,20 @@ name = MjpegServer(name="name", port=1182)
 name.setSource(cvSource)
 
 cap = vc(src=0)
-
+cap.start()
 ################### WEIRD RASPBERRY PI STUFF ###################
 
 
-HSV_low = [20, 110, 110]
-HSV_high = [45, 255, 255]
+HSV_low = [15, 80, 100]
+HSV_high = [50, 255, 255]
 
 blur_size = 5
 kernel_size = 5
-circle_threshold = 0.12
+circle_threshold = 0.21
 
 
 # Called when the trackbars change
-def callback(x):
+'''def callback(x):
     global HSV_low, HSV_high, kernel_size, circle_threshold
     HSV_low[0] = cv2.getTrackbarPos('low H', 'controls')
     HSV_high[0] = cv2.getTrackbarPos('high H', 'controls')
@@ -61,6 +62,8 @@ def callback(x):
     HSV_high[2] = cv2.getTrackbarPos('high V', 'controls')
     kernel_size = cv2.getTrackbarPos('Kernel Size', 'controls')
     circle_threshold = cv2.getTrackbarPos('Circle Threshold', 'controls') / 100
+    if circle_threshold is 0:
+        circle_threshold = 1
 
 
 # Window for trackbars
@@ -77,7 +80,7 @@ cv2.createTrackbar('high V', 'controls', HSV_high[2], 255, callback)
 cv2.createTrackbar('Kernel Size', 'controls', kernel_size, 16, callback)
 cv2.createTrackbar('Circle Threshold', 'controls', int(circle_threshold * 100), 99, callback)
 
-
+'''
 # Find circle function
 # Returns array of circles with accuracy (0 - 1), 1 meaning 100% a circle and 0 meaning 0% a circle
 # Return Example:
@@ -105,7 +108,7 @@ def find_circles(image):
     open_mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel2x)
 
     # Open_mask, but colored. Used for debug
-    colored_mask = cv2.bitwise_and(blur, blur, mask=open_mask)
+    #colored_mask = cv2.bitwise_and(blur, blur, mask=open_mask)
 
     # Find edges of open_mask and MORPH_CLOSE to connect nearby edges and fill smaller holes
     canny = cv2.Canny(open_mask, 0, 255)
@@ -141,6 +144,7 @@ def find_circles(image):
                 # Check if distance is a similar length to the radius within the threshold
                 if (dist * (1 - circle_threshold) > r) or (dist * (1 + circle_threshold) < r):
                     is_circle = False
+                    break
 
             # If it passed, it gets added to an array
             if is_circle:
@@ -148,35 +152,31 @@ def find_circles(image):
                 circle_contours.append(convex_contour)
 
     # Show the colored mask, used for debug
-    cv2.imshow("colored_mask", colored_mask)
+    #cv2.imshow("colored_mask", colored_mask)
 
     # Return circles
     return result_circles
 
 
 # Make sure capture is open and loaded
-if cap.isOpened():
-    while True:
-        # Read the frame of capture
-        ret, img = cap.read()
+while True:
+    # Read the frame of capture
+    ret, frame = cap.read()
 
-        # Resize frame
-        frame = cv2.resize(img, (640, 360))
+    # find circles
+    circles = find_circles(frame)
 
-        # find circles
-        circles = find_circles(frame)
+    # Loop through circles and display them
+    for circle in circles:
+        cv2.circle(frame, (circle[0], circle[1]), circle[2], (255, 100, 75), int(circle[2] / 15))
+        cv2.circle(frame, (circle[0], circle[1]), 1, (255, 100, 75), int(circle[2] / 15))
+        cv2.putText(frame, str(round((circle[3]) * 100)) + "%", (circle[0] + 5, circle[1] + 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, circle[2] / 120, (255, 100, 75), int(circle[2] / 60), cv2.LINE_AA)
 
-        # Loop through circles and display them
-        for circle in circles:
-            cv2.circle(frame, (circle[0], circle[1]), circle[2], (255, 100, 75), int(circle[2] / 15))
-            cv2.circle(frame, (circle[0], circle[1]), 1, (255, 100, 75), int(circle[2] / 15))
-            cv2.putText(frame, str(round((circle[3]) * 100)) + "%", (circle[0] + 5, circle[1] + 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, circle[2] / 120, (255, 100, 75), int(circle[2] / 60), cv2.LINE_AA)
-
-        # Display result frame
-        cv2.imshow("result", frame)
-
-        cv2.waitKey(16)
+    # Display result frame
+    cv2.imshow("result", frame)
+    cv2.waitKey(1)
+    gc.collect()
 
 # Unload everything
 cap.release()
