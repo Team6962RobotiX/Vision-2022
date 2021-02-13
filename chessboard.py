@@ -6,6 +6,7 @@ import time
 from cscore import CameraServer
 
 from videocaptureasync import VideoCaptureAsync
+from picapture import PiCapture
 """
 from cscore import CameraServer
 """
@@ -51,6 +52,8 @@ class CameraSource(object):
     else:
       self.camera = cv2.VideoCapture(cameraSource)
 
+    self.camera = PiCapture()
+      
     if capture_size is not None:
       print(capture_size)
       self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, capture_size[0])
