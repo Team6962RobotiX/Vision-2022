@@ -52,7 +52,7 @@ circle_threshold = 0.21
 
 
 # Called when the trackbars change
-'''def callback(x):
+def callback(x):
     global HSV_low, HSV_high, kernel_size, circle_threshold
     HSV_low[0] = cv2.getTrackbarPos('low H', 'controls')
     HSV_high[0] = cv2.getTrackbarPos('high H', 'controls')
@@ -80,13 +80,12 @@ cv2.createTrackbar('high V', 'controls', HSV_high[2], 255, callback)
 cv2.createTrackbar('Kernel Size', 'controls', kernel_size, 16, callback)
 cv2.createTrackbar('Circle Threshold', 'controls', int(circle_threshold * 100), 99, callback)
 
-'''
 # Find circle function
 # Returns array of circles with accuracy (0 - 1), 1 meaning 100% a circle and 0 meaning 0% a circle
 # Return Example:
 # [[x, y, r, accuracy], [x, y, r, accuracy], [x, y, r, accuracy]...]
 def find_circles(image):
-    # Check for if we don't have video
+# Check for if we don't have video
     if image is None:
         return []
 
@@ -108,7 +107,7 @@ def find_circles(image):
     open_mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel2x)
 
     # Open_mask, but colored. Used for debug
-    #colored_mask = cv2.bitwise_and(blur, blur, mask=open_mask)
+    colored_mask = cv2.bitwise_and(blur, blur, mask=open_mask)
 
     # Find edges of open_mask and MORPH_CLOSE to connect nearby edges and fill smaller holes
     canny = cv2.Canny(open_mask, 0, 255)
@@ -144,7 +143,6 @@ def find_circles(image):
                 # Check if distance is a similar length to the radius within the threshold
                 if (dist * (1 - circle_threshold) > r) or (dist * (1 + circle_threshold) < r):
                     is_circle = False
-                    break
 
             # If it passed, it gets added to an array
             if is_circle:
@@ -152,13 +150,12 @@ def find_circles(image):
                 circle_contours.append(convex_contour)
 
     # Show the colored mask, used for debug
-    #cv2.imshow("colored_mask", colored_mask)
+    cv2.imshow("colored_mask", colored_mask)
 
     # Return circles
     return result_circles
 
 
-# Make sure capture is open and loaded
 while True:
     # Read the frame of capture
     ret, frame = cap.read()
