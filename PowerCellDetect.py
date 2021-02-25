@@ -165,10 +165,11 @@ while True:
 
     # Loop through circles and display them
     for circle in circles:
-        cv2.circle(frame, (circle[0], circle[1]), circle[2], (255, 100, 75), int(circle[2] / 15))
-        cv2.circle(frame, (circle[0], circle[1]), 1, (255, 100, 75), int(circle[2] / 15))
-        cv2.putText(frame, str(round((circle[3]) * 100)) + "%", (circle[0] + 5, circle[1] + 5),
-                    cv2.FONT_HERSHEY_SIMPLEX, circle[2] / 120, (255, 100, 75), int(circle[2] / 60), cv2.LINE_AA)
+        if circle[2] != 0:
+            cv2.circle(frame, (circle[0], circle[1]), circle[2], (255, 100, 75), int(circle[2] / 15))
+            cv2.circle(frame, (circle[0], circle[1]), 1, (255, 100, 75), int(circle[2] / 15))
+            cv2.putText(frame, str(round(2.45 * int(1920 / 3) / circle[2], 2)) + " in. (" + str(round((circle[3]) * 100)) + "%)", (circle[0] + 5, circle[1] + 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, circle[2] / 120, (255, 100, 75), int(circle[2] / 60), cv2.LINE_AA)
 
     # Display result frame
     cv2.imshow("result", frame)
