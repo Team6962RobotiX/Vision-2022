@@ -5,12 +5,12 @@ import gc
 #import cProfile
 
  # 0.0 gets all shades of black, gray, and white
-red_grayness = 0.6
-blue_grayness = 0.15
+red_grayness = 0.5
+blue_grayness = 0.20
 
 # 1.0 gets all similar hues of red or blue
 red_variance = 0.1
-blue_variance = 0.3
+blue_variance = 0.4
 
 upper_brightness = 200
 lower_darkness = 20
@@ -25,13 +25,14 @@ def find_circles(image, certainty_thresh, min_radius):
 
     output = {
         "circles": [],
-        "contours": []
+        "contours": [],
+        "mask": []
     }
 
 
 
-    kernel = np.ones((5, 5), np.uint8)
-    close_kernel = np.ones((15, 15), np.uint8)
+    kernel = np.ones((6, 6), np.uint8)
+    #close_kernel = np.ones((15, 15), np.uint8)
 
     image = cv2.GaussianBlur(image, (5, 5), cv2.BORDER_DEFAULT)
 
@@ -40,36 +41,37 @@ def find_circles(image, certainty_thresh, min_radius):
     red_mask = (r > b) & (r > g) & (abs(g - b) < r * red_variance) & ((r - np.fmax(g, b)) > r * red_grayness) & ((r + g + b) / 3 < upper_brightness) & ((r + g + b) / 3 > lower_darkness)
     blue_mask = (b > r) & (b > g) & (abs(g - r) < b * blue_variance) & ((b - np.fmax(r, g)) > b * blue_grayness) & ((r + g + b) / 3 < upper_brightness) & ((r + g + b) / 3 > lower_darkness)
 
-    red_masked = np.ones(image.shape, np.uint8)
-    blue_masked = np.ones(image.shape, np.uint8)
+    red_masked = np.zeros((image.shape[0], image.shape[1]), np.uint8)
+    blue_masked = np.zeros((image.shape[0], image.shape[1]), np.uint8)
+    red_masked[red_mask] = 255
+    blue_masked[blue_mask] = 255
 
-    red_masked[red_mask] = [255, 255, 255]
-    blue_masked[blue_mask] = [255, 255, 255]
+    # red_masked = cv2.morphologyEx(red_masked, cv2.MORPH_CLOSE, kernel)
+    # blue_masked = cv2.morphologyEx(blue_masked, cv2.MORPH_CLOSE, kernel)
+    red_masked = cv2.morphologyEx(red_masked, cv2.MORPH_OPEN, kernel)
+    blue_masked = cv2.morphologyEx(blue_masked, cv2.MORPH_OPEN, kernel)
 
-    # red_masked = cv2.morphologyEx(red_masked, cv2.MORPH_OPEN, kernel)
-    # blue_masked = cv2.morphologyEx(blue_masked, cv2.MORPH_OPEN, kernel)
 
-    red_masked = image & red_masked
-    blue_masked = image & blue_masked
-
-    colored_mask = red_masked | blue_masked
+    output["mask"] = red_masked | blue_masked
+    # red_masked = image & red_masked
+    # blue_masked = image & blue_masked
+    #
+    # colored_mask = red_masked | blue_masked
 
     # red_closed_mask = cv2.morphologyEx(red_masked, cv2.MORPH_CLOSE, close_kernel)
     # blue_closed_mask = cv2.morphologyEx(blue_masked, cv2.MORPH_CLOSE, close_kernel)
 
-    red_canny = cv2.Canny(red_masked, 32, 128)
-    blue_canny = cv2.Canny(blue_masked, 32, 128)
+    #red_canny = cv2.Canny(red_masked, 0, 255)
+    #blue_canny = cv2.Canny(blue_masked, 0, 255)
 
     red_contours, red_hierarchy = cv2.findContours(
-        red_canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        red_masked, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     blue_contours, blue_hierarchy = cv2.findContours(
-        blue_canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        blue_masked, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
 
     contours = red_contours + blue_contours
 
     output["contours"] = contours
-
-    cv2.imshow('output', colored_mask)
 
     if len(contours) != 0:
         for contour in contours:
@@ -100,7 +102,7 @@ def find_circles(image, certainty_thresh, min_radius):
                 ((convex_area - area) / (math.pi * (r ** 2)))
             solidity_certainty = solidity_certainty ** 2
 
-            certainty = (area_certainty + perimeter_certainty) / 2
+            certainty = (area_certainty + perimeter_certainty + solidity_certainty) / 3
 
             if certainty < certainty_thresh:
                 continue
@@ -115,7 +117,7 @@ def find_circles(image, certainty_thresh, min_radius):
                 team = "red"
 
             certainty = (area_certainty +
-                         perimeter_certainty) / 2
+                         perimeter_certainty + solidity_certainty) / 3
 
             if certainty > certainty_thresh:
                 output["circles"].append({
@@ -145,23 +147,29 @@ while True:
 
     data = find_circles(frame, 0.8, 30)
     circles = data["circles"]
-
+    #frame = data["mask"]
 
     #cv2.drawContours(frame, data["contours"], -1, (100, 255, 75), 3)
 
     for i in range(len(circles)):
         circle_color = circles[i]["color"]
         #print(circles[i]["team"] + ": " + str(circle_color))
-        cv2.circle(frame, (circles[i]["x"], circles[i]["y"]),
-                   circles[i]["r"], circle_color, -1)
-        cv2.circle(frame, (circles[i]["x"], circles[i]["y"]),
-                   circles[i]["r"], (100, 255, 75), 5)
-        cv2.putText(frame, str(round((circles[i]["certainty"]) * 100)) + "%", (circles[i]["x"] + 5, circles[i]["y"] + 5),
-                    cv2.FONT_HERSHEY_SIMPLEX, circles[i]["r"] / 120, (100, 255, 75), int(circles[i]["r"] / 60), cv2.LINE_AA)
+        # cv2.circle(frame, (circles[i]["x"], circles[i]["y"]),
+        #            circles[i]["r"], circle_color, -1)
+        if circles[i]["team"] == "blue":
+            cv2.circle(frame, (circles[i]["x"], circles[i]["y"]),
+                       circles[i]["r"], (50, 50, 150), 10)
+            cv2.putText(frame, str(round((circles[i]["certainty"]) * 100)) + "%", (circles[i]["x"] + 5, circles[i]["y"] + 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, circles[i]["r"] / 120, (50, 50, 150), int(circles[i]["r"] / 60), cv2.LINE_AA)
+        else:
+            cv2.circle(frame, (circles[i]["x"], circles[i]["y"]),
+                       circles[i]["r"], (100, 75, 50), 10)
+            cv2.putText(frame, str(round((circles[i]["certainty"]) * 100)) + "%", (circles[i]["x"] + 5, circles[i]["y"] + 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, circles[i]["r"] / 120, (100, 75, 50), int(circles[i]["r"] / 60), cv2.LINE_AA)
 
     #print(len(data["circles"]))
     cv2.namedWindow("output", cv2.WINDOW_NORMAL)
-    #cv2.imshow("output", frame)
+    cv2.imshow("output", frame)
     cv2.resizeWindow('output', 1920, 1080)
     k = cv2.waitKey(1) & 0xFF
     if k == ord('q'):
