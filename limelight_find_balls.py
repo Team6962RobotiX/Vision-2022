@@ -32,8 +32,6 @@ COLOR_BLUE = "blue"
 
 # runPipeline() is called every frame by Limelight's backend.
 def runPipeline(image, llrobot):
-    global COLOR_TO_FIND
-
     # defaults to send back to the robot if nothing is found
     largest_contour = np.array([[]])
     llpython = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -42,7 +40,7 @@ def runPipeline(image, llrobot):
         return largest_contour, image, llpython
 
     # find ball contours
-    contours = find_ball_contours(image, COLOR_TO_FIND)
+    contours = find_ball_contours(image)
 
     # return if none found
     if len(contours) == 0:
@@ -65,7 +63,7 @@ def runPipeline(image, llrobot):
 
 
 # finds likely ball contours
-def find_ball_contours(image, color):
+def find_ball_contours(image):
     global MINIMUM_CERTAINTY_PERCENTAGE
     global MINIMUM_PIXELS_RADIUS
     global COLOR_RED
@@ -82,12 +80,7 @@ def find_ball_contours(image, color):
     blur = cv2.GaussianBlur(hsv, (5, 5), cv2.BORDER_DEFAULT)
 
     # find color masks
-    if COLOR_BLUE == color:
-        masks = find_masks_blue(blur)
-    elif COLOR_RED == color:
-        masks = find_masks_red(blur)
-
-    masked = cv2.morphologyEx(masks, cv2.MORPH_OPEN, kernel)
+    masked = cv2.morphologyEx(find_color_masks(blur), cv2.MORPH_OPEN, kernel)
 
     # find the contours matching the mask
     contours, hierarchy = cv2.findContours(
@@ -131,6 +124,15 @@ def find_ball_contours(image, color):
             matching_contours.append(contour)
 
     return matching_contours
+
+# finds color masks
+def find_color_masks(blur):
+    global COLOR_TO_FIND
+
+    if COLOR_BLUE == COLOR_TO_FIND:
+        return find_masks_blue(blur)
+    elif COLOR_RED == COLOR_TO_FIND:
+        return find_masks_red(blur)
 
 
 # finds red masks
