@@ -8,7 +8,7 @@ import numpy as np
 
 # Set this to 1 for testing the code with a screenshot of the limelight camrea
 # frame captured from the limelight.local:5801 console.
-DEBUG_LIMELIGHT_SCREENSHOT = 1
+DEBUG_LIMELIGHT_SCREENSHOT = 0
 
 class CoordinateFrame(object):
   def __init__(self, axisLength):
